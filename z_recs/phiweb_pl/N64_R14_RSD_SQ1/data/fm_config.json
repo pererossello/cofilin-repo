@@ -1,0 +1,1 @@
+{"N": 64, "L": 870.4, "Z_I": 99, "Z_F": 0, "pk_with_sinc": true, "where_lagr_particles": "CENTER", "psi_trlilinear": false, "der_method": "FR", "pm_method": "CIC", "lpt_method": "2LPT", "rsd": true, "det_bias_model": "PowerLaw", "stoch_bias_model": "Poisson", "N_TR": [6594116.976639999], "cweb": "PhiWeb", "lambda_th": 0.05, "soft_cweb": true, "cweb_sharpness": 10}

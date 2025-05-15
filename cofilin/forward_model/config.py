@@ -92,7 +92,6 @@ class FMConfig:
     det_bias_model: str = 'Linear'
     stoch_bias_model: str = "Poisson"
     N_TR: int = None
-    bias_params: dict = None
 
     # CWEB SETTINGS
     cweb: Union[None, str] = None

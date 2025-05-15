@@ -6,17 +6,14 @@ import numpyro.distributions as dist
 
 from .config import Constants, FMConfig
 
-
-
-
 # DETERMINISTIC BIAS FUNCTIONS
 
 
-eps = 1e-7
+eps = 1e-1
 
 
 def bias_l(delta_dm, b=1):
-    return b*(1 + delta_dm)
+    return b * (1 + delta_dm)
 
 
 def bias_pl(delta_dm, alpha=1):
@@ -69,12 +66,19 @@ def make_bias_param_distro_dic(det_bias_model, stoch_bias_model, n_regions):
         alpha_distro = dist.LogNormal(0.0, 1.0).expand([n_regions]).to_event(1)
         out_dict = {"b": b_distro, "alpha": alpha_distro}
 
-    if stoch_bias_model == 'NegBinomial':
-        beta_distro = dist.LogNormal(0.0,2.0).expand([n_regions]).to_event(1)
-        out_dict['beta'] = beta_distro
+    elif det_bias_model == "HighPassPowerLaw":
+        alpha_distro = dist.LogNormal(0.0, 1.0).expand([n_regions]).to_event(1)
+        e_hp_distro = dist.Gamma(2.0, 2.0).expand([n_regions]).to_event(1)
+        rho_hp_distro = dist.LogNormal(0.0, 1.0).expand([n_regions]).to_event(1)
+        out_dict = {"alpha": alpha_distro, "e_hp": e_hp_distro, "rho_hp": rho_hp_distro}
+
+    if stoch_bias_model == "NegBinomial":
+        beta_distro = (
+            dist.LogNormal(jnp.log(10.0), 0.35).expand([n_regions]).to_event(1)
+        )
+        out_dict["beta"] = beta_distro
 
     return out_dict
-    
 
 
 # NORMALIZATION
@@ -106,6 +110,7 @@ def norm_factor_soft_cweb(n_tr_mean, N_TR, cweb_hard, cweb_soft, n_regions):
 
 # SAMPLING
 
+
 def sample_poisson(key, n_tr_mean):
     return jax.random.poisson(key, n_tr_mean)
 
@@ -130,10 +135,10 @@ def sample_negbin(key, n_tr_mean, beta):
 
 def manage_params(params):
     for key, val in params.items():
-        val = jnp.atleast_1d(val).astype(float)
+        val = jnp.atleast_1d(jnp.array(val)).astype(float)
         params[key] = val
     return params
-    
+
     # if fm_cfg.cweb is None:
     #     for key, val in params.items():
     #         val = jnp.atleast_1d(val)
@@ -142,7 +147,7 @@ def manage_params(params):
     #     for key, val in params.items():
     #         val = jnp.array(val)
     #         params[key] = val
-    
+
 
 def get_apply_cweb(fm_cfg: FMConfig):
     if fm_cfg.cweb is None:

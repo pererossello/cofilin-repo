@@ -17,8 +17,8 @@ from .bias import (
     norm_factor_no_cweb,
     norm_factor_hard_cweb,
     make_bias_param_distro_dic,
-    sample_poisson, 
-    sample_negbin
+    sample_poisson,
+    sample_negbin,
 )
 
 
@@ -84,7 +84,7 @@ class FModel:
             return normalize(n_tr_mean)
 
         return f
-    
+
     def sample_n_tr(self, n_tr_mean, key, params=None, cweb=None):
 
         apply_cweb = get_apply_cweb(self.fm_cfg)
@@ -92,7 +92,8 @@ class FModel:
         stoch_bias = self.fm_cfg.stoch_bias_model
         if stoch_bias == "Poisson":  # cweb dos not enter
             return sample_poisson(key, n_tr_mean)
-        elif stoch_bias == 'NegBinomial':
+        elif stoch_bias == "NegBinomial":
+            beta = jnp.array(params["beta"])
             beta = apply_cweb(beta, cweb)
             return sample_negbin(key, n_tr_mean, beta)
 
@@ -105,7 +106,7 @@ class FModel:
         apply_cweb = get_apply_cweb(self.fm_cfg)
         get_n_tr_mean = self.n_tr_mean()
         bias_distro_dic = make_bias_param_distro_dic(
-            self.fm_cfg.det_bias_model,self.fm_cfg.stoch_bias_model, n_regions
+            self.fm_cfg.det_bias_model, self.fm_cfg.stoch_bias_model, n_regions
         )
 
         def model(data):
@@ -117,20 +118,19 @@ class FModel:
             cweb = get_cweb(delta_lpt)
 
             params = {
-                name: numpyro.sample(name, distro) for name, distro in bias_distro_dic.items()
+                name: numpyro.sample(name, distro)
+                for name, distro in bias_distro_dic.items()
             }
             n_tr_mean = get_n_tr_mean(delta_lpt, params, cweb)
 
-            if self.fm_cfg.stoch_bias_model == 'Poisson':
+            if self.fm_cfg.stoch_bias_model == "Poisson":
                 numpyro.sample("obs", dist.Poisson(n_tr_mean), obs=data)
 
-            elif self.fm_cfg.stoch_bias_model == 'NegBinomial':
-                beta = params['beta']
+            elif self.fm_cfg.stoch_bias_model == "NegBinomial":
+                beta = params["beta"]
                 beta = apply_cweb(beta, cweb)
-                rate_param = beta / n_tr_mean  # gamma rate = beta / mean
-                lam = numpyro.sample("lam", dist.Gamma(concentration=beta, rate=rate_param))
-                numpyro.sample("obs", dist.Poisson(lam), obs=data)
-                        
+                numpyro.sample("obs", dist.NegativeBinomial2(n_tr_mean, beta), obs=data)
+
         return model
 
     def _get_apply_cweb(self):

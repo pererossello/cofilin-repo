@@ -25,7 +25,7 @@ SEED_INT_Q = 1
 SEED_INT_N_TR = 1
 
 N, Z_I, Z_F = 128, 99, 0.1
-R = 3.4 * 4  # * 4
+R = 3.4 * 2  # * 4
 MND = 1e-2
 L = R * N
 N_TR = 1e-2 * L**3
@@ -36,7 +36,7 @@ lpt_method = "2LPT"
 rsd = True
 det_bias_model = "HighPassPowerLaw"
 stoch_bias_model = "NegBinomial"
-cweb = "PhiDeltaWeb"
+cweb = "PhiWeb"
 soft_cweb = True
 cweb_sharpness = 10
 
@@ -56,10 +56,10 @@ fm_cfg = FMConfig(
 )
 
 params = {
-    "alpha": jnp.array([1.0, 1.2, 1.05, 1.2]*4),
-    "e_hp": jnp.array([1.2, 1.3, 1.5, 1.2]*4),
-    "rho_hp": jnp.array([1., 0.9, 1.2, 1.1]*4),
-    "beta": jnp.array([10, 11, 12, 13]*4),
+    "alpha": jnp.array([1.0, 1.2, 1.05, 1.2]),
+    "e_hp": jnp.array([1.2, 1.3, 1.5, 1.2]),
+    "rho_hp": jnp.array([1., 0.9, 1.2, 1.1]),
+    "beta": jnp.array([14.2, 12.1, 11.2, 10.5]),
 }
 
 rsd_str = "RSD_" if rsd else ""

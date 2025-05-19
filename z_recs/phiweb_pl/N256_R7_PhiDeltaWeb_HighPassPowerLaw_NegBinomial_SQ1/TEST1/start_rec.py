@@ -6,13 +6,12 @@ import pickle
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 repo_dir = "/home/pere/code/cofilin-repo/"
-
 sys.path.insert(0, repo_dir)
 
 import h5py
 import jax
 
-#jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 print(jax.devices())
 import jax.numpy as jnp
 import h5py
@@ -39,9 +38,9 @@ from cofilin.recs.plot_utils import compare_fields
 
 
 this_file_dir = os.path.abspath(os.path.dirname(__file__))
-rec_dir = "/home/pere/code/cofilin-repo/z_recs/phiweb_pl/N128_R14_HighPassPowerLaw_NegBinomial_SQ1"
+rec_dir = "/home/pere/code/cofilin-repo/z_recs/phiweb_pl/N256_R7_PhiDeltaWeb_HighPassPowerLaw_NegBinomial_SQ1"
 
-CHAIN = 2
+CHAIN = 1
 savefold = os.path.join(this_file_dir, f"CH{CHAIN:02d}")
 make_and_check_dir(savefold)
 
@@ -52,14 +51,12 @@ fmodel = FModel(fm_cfg)
 
 print(fm_cfg.stoch_bias_model)
 
-
 mock_path = os.path.join(rec_dir, "data/mock.hdf5")
 with h5py.File(mock_path, "r") as f:
     din_ref = jnp.array(f["din"][:])
     n_tr_data = jnp.array(f["n_tr_data"][:])
 
 delta_wf, q_wf = apply_wiener_filter(n_tr_data, cte)
-
 
 ######################
 
@@ -75,6 +72,11 @@ fig, axs = compare_fields(
     xlog=True,
     pk_rat_lim=(0.5, 1.5),
 )
+
+# del din_ref
+del delta_wf
+
+
 fig_path = os.path.join(savefold, "fig_wf.png")
 print("Plotting...", end=" ")
 fig.savefig(fig_path, bbox_inches="tight")
@@ -83,20 +85,21 @@ print("Done")
 
 model = fmodel.build_model()
 
-init_params = {"q": q_wf, 
-            #    "alpha": jnp.array([1,1,1,1.]),
-            #    "e_hp": jnp.array([1,1,1,1.]),
-            #    "rho_hp": jnp.array([1,1,1,1.]),
-            #    "beta": jnp.array([10,10,10,10.])
-               }
+init_params = {
+    "q": q_wf,
+    "alpha": jnp.array([1, 1, 1, 1.0] * 4),
+    "e_hp": jnp.array([1, 1, 1, 1.0] * 4),
+    "rho_hp": jnp.array([1, 1, 1, 1.0] * 4),
+    "beta": jnp.array([1, 1, 1, 1.0] * 4),
+}
 init_strategy = init_to_value(values=init_params)
 
-max_tree_depth = 10
-adapt_mass_matrix = True
+max_tree_depth = 4
+adapt_mass_matrix = False
 dense_mass = False
-adapt_step_size = True
+adapt_step_size = False
 
-num_warmup = 100
+num_warmup = 200
 num_samples = 1
 thinning = 1
 

@@ -80,11 +80,12 @@ print("Done")
 
 model = fmodel.build_model()
 
-init_params = {"q": q_wf, 
-               "alpha": jnp.array([1,1,1,1.]*4),
-               "e_hp": jnp.array([1,1,1,1.]*4),
-               "rho_hp": jnp.array([1,1,1,1.]*4)
-               }
+init_params = {
+    "q": q_wf,
+    "alpha": jnp.array([1, 1, 1, 1.0] * 4),
+    "e_hp": jnp.array([1, 1, 1, 1.0] * 4),
+    "rho_hp": jnp.array([1, 1, 1, 1.0] * 4),
+}
 init_strategy = init_to_value(values=init_params)
 
 max_tree_depth = 10

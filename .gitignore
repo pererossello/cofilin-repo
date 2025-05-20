@@ -2,6 +2,7 @@ z_snippets.md
 z_bin
 zz_bin
 
+__pycache__
 tests
 cache
 sample.hdf5

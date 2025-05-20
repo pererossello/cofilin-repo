@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from .fourier import my_fft, my_ifft, my_ifft_on_vec, my_fft_on_vec
+from .fourier import my_fft, my_ifft, my_ifft_on_vec, my_fft_on_vec, get_k_sq
 from .calculus import gradient_hat, gradient_fd, der_i_5ps, symmetric_gaussian_nonorm
 from .particle_mesh import particle_to_mesh, trilinear_interpolation
 from .config import Constants, FMConfig
@@ -18,7 +18,7 @@ def get_delta_lpt(delta, cte: Constants, fm_cfg: FMConfig):
 
 def displace_particles(psi, cte: Constants, fm_cfg: FMConfig):
 
-    if fm_cfg.psi_has_hat:
+    if jnp.iscomplexobj(psi):   
         psi = my_ifft_on_vec(psi, cte.INV_L3)
 
     grid_shape = (cte.N, cte.N, cte.N)
@@ -69,7 +69,14 @@ def get_psi_lpt1(delta_hat, cte: Constants, fm_cfg: FMConfig):
     if fm_cfg.lpt_method == "1LPT":
         psi *= cte.D1
         if fm_cfg.rsd:
-            psi = psi.at[0, ...].multiply((1 + cte.f1))
+            if fm_cfg.rsd_type == "Radial":
+                if fm_cfg.der_method == "FR":
+                    psi = my_ifft_on_vec(psi, cte.INV_L3)
+                dot = jnp.sum(psi * fm_cfg.r_vec_over_r, axis=0)
+                psi += cte.f1 * dot * fm_cfg.r_vec_over_r * 1
+
+            else:
+                psi = psi.at[0, ...].multiply((1 + cte.f1))
     return psi
 
 
@@ -134,9 +141,22 @@ def get_psi_lpt2(delta_hat, cte: Constants, fm_cfg: FMConfig):
     psi2 = get_psi_o2(psi1, cte, fm_cfg)
 
     psi = psi1 * D1 + psi2 * D2
+
     if fm_cfg.rsd and (fm_cfg.lpt_method == "2LPT"):
-        psi_x = D1 * (1 + f1) * psi1[0, ...] + D2 * (1 + f2) * psi2[0, ...]
-        psi = psi.at[0, ...].set(psi_x)
+        if fm_cfg.rsd_type == 'Radial':
+            if fm_cfg.der_method == "FR":
+                psi = my_ifft_on_vec(psi, cte.INV_L3)
+                psi1 = my_ifft_on_vec(psi1, cte.INV_L3)
+                psi2 = my_ifft_on_vec(psi2, cte.INV_L3)
+
+            dot1 = jnp.sum(psi1 * fm_cfg.r_vec_over_r, axis=0)
+            dot2 = jnp.sum(psi2 * fm_cfg.r_vec_over_r, axis=0)
+            psi += cte.D1 * cte.f1 * dot1 * fm_cfg.r_vec_over_r 
+            psi += cte.D2 * cte.f2 * dot2 * fm_cfg.r_vec_over_r 
+
+        else:
+            psi_x = D1 * (1 + f1) * psi1[0, ...] + D2 * (1 + f2) * psi2[0, ...]
+            psi = psi.at[0, ...].set(psi_x)
 
     return psi
 
@@ -156,15 +176,15 @@ def get_psi_sc(delta_in, cte: Constants, fm_cfg: FMConfig):
         jnp.sqrt(jnp.maximum(1 - 2 / 3 * delta_in * bool_arr_soft, 0)) * bool_arr_soft
     )
 
-    if fm_cfg.muscle:  # one iteration
-        RES = L / N
-        delta_in_hat = my_fft(delta_in, L3)
-        r = (2**0) * RES
-        one_over_var_k = r**2
-        filt_k = symmetric_gaussian_nonorm(fm_cfg.k_sq, one_over_var_k)
-        delta_smooth = my_ifft(filt_k * delta_in_hat, INV_L3)
-        bool_arr_smooth = delta_smooth < 3 / 2
-        bool_arr &= bool_arr_smooth
+    # if fm_cfg.muscle:  # one iteration
+    #     RES = L / N
+    #     delta_in_hat = my_fft(delta_in, L3)
+    #     r = (2**0) * RES
+    #     one_over_var_k = r**2
+    #     filt_k = symmetric_gaussian_nonorm(fm_cfg.k_sq, one_over_var_k)
+    #     delta_smooth = my_ifft(filt_k * delta_in_hat, INV_L3)
+    #     bool_arr_smooth = delta_smooth < 3 / 2
+    #     bool_arr &= bool_arr_smooth
 
     div_psi = 3 * thing - 3
 
@@ -189,7 +209,8 @@ def get_psi_alpt(delta_in_hat, cte: Constants, fm_cfg: FMConfig):
     psi_lpt2 = get_psi_lpt2(delta_in_hat, cte, fm_cfg)
 
     one_over_var_k = fm_cfg.r_s**2
-    filt_k = symmetric_gaussian_nonorm(fm_cfg.k_sq, one_over_var_k)
+    k_sq = get_k_sq(cte.N, cte.L)
+    filt_k = symmetric_gaussian_nonorm(k_sq, one_over_var_k)
 
     if fm_cfg.der_method == "FD":
         psi_lpt2 = my_fft_on_vec(psi_lpt2, cte.L3)
@@ -198,10 +219,25 @@ def get_psi_alpt(delta_in_hat, cte: Constants, fm_cfg: FMConfig):
     psi = filt_k * psi_lpt2 + (1 - filt_k) * psi_sc
 
     if fm_cfg.rsd:
-        psi_lpt1_x = 1j * cte.kx * fm_cfg.one_over_k_sq * delta_in_hat * cte.D1
-        psi = psi.at[0, ...].set(psi[0, ...] + cte.f1 * psi_lpt1_x + cte.f2 * (psi[0, ...] - psi_lpt1_x))
 
-    if fm_cfg.der_method == "FD":
-        psi = my_ifft_on_vec(psi, cte.INV_L3)
+        if fm_cfg.rsd_type == 'Radial':
+
+            psi = my_ifft_on_vec(psi, cte.INV_L3)
+
+            psi_lpt1 = cte.D1 * gradient_hat(delta_in_hat * fm_cfg.one_over_k_sq, cte.kx, cte.ky, cte.kz)
+            psi_lpt1 = my_ifft_on_vec(psi_lpt1, cte.INV_L3)
+            psi_dif = psi - psi_lpt1
+
+            dot1 = jnp.sum(psi_lpt1 * fm_cfg.r_vec_over_r, axis=0)            
+            dot2 = jnp.sum(psi_dif * fm_cfg.r_vec_over_r, axis=0)
+
+            psi += cte.f1 * dot1 * fm_cfg.r_vec_over_r
+            psi += cte.f2 * dot2 * fm_cfg.r_vec_over_r
+
+        else:
+            psi_lpt1_x = 1j * cte.kx * fm_cfg.one_over_k_sq * delta_in_hat * cte.D1
+            psi = psi.at[0, ...].set(
+                psi[0, ...] + cte.f1 * psi_lpt1_x + cte.f2 * (psi[0, ...] - psi_lpt1_x)
+            )
 
     return psi

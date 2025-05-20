@@ -3,7 +3,6 @@ z_bin
 zz_bin
 
 __pycache__
-tests
 cache
 sample.hdf5
 mock.hdf5

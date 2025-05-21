@@ -110,9 +110,18 @@ class FModel:
         )
 
         def model(data):
-            q = numpyro.sample(
-                "q", dist.Normal(0, 1).expand([self.N, self.N, self.N]).to_event(3)
-            )
+
+            if self.fm_cfg.input_kind in ["WN", "CWN"]:
+                q = numpyro.sample(
+                    "q", dist.Normal(0, 1).expand([self.N, self.N, self.N]).to_event(3)
+                )
+            elif self.fm_cfg.input_kind == "PHASES":
+                q = numpyro.sample(
+                    "q",
+                    dist.Uniform(low=0, high=1)
+                    .expand([self.N**3//2 - 4,])
+                    .to_event(1),
+                )
 
             delta_lpt = get_delta_lpt(q)
             cweb = get_cweb(delta_lpt)

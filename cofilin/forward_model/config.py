@@ -80,6 +80,9 @@ class FMConfig:
     where_lagr_particles: str = "CENTER"
     psi_trlilinear: bool = False
 
+    # INPUT KIND
+    input_kind: str = 'WN' # CWN
+
     # MESH SETTINGS
     der_method: str = "FR"
     pm_method: str = "CIC"

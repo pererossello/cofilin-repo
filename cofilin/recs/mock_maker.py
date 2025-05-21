@@ -23,7 +23,7 @@ def make_mock(fm_cfg: FMConfig, savedir, seed_int_q, params, seed_int_n_tr, save
     key_q = jax.random.PRNGKey(seed_int_q)
     key_n_tr = jax.random.PRNGKey(seed_int_n_tr)
 
-    q_ref = gen_input_arr(key_q, cte)
+    q_ref = gen_input_arr(key_q, cte, fm_cfg)
     din = my_ifft(fmodel.delta_in(q_ref), cte.INV_L3)
     dev = fmodel.delta_lpt(q_ref)
     cweb_arr = fmodel.cweb(dev)

@@ -87,6 +87,8 @@ class FMConfig:
     # LPT SETTINGS
     lpt_method: str = "1LPT"
     rsd: bool = False
+    rsd_type: str = 'Radial'
+    r_s = 4
 
     # BIAS SETTINGS
     det_bias_model: str = 'Linear'
@@ -113,14 +115,17 @@ class FMConfig:
 
     def _check_N_TR(self):
 
-        self.N_TR = jnp.array(jnp.atleast_1d(self.N_TR))
-
-        if self.N_TR.shape == (1,):
-            self.global_N_TR = True
+        if self.N_TR is None:
+            print('N_TR is not set. No bias in forward model.')
         else:
-            self.N_TR = False
-            if self.bias_N_TR.shape != (self.n_regions):
-                raise ValueError("Shape of N_TR should be equal to number of regions!")
+            self.N_TR = jnp.array(jnp.atleast_1d(self.N_TR))
+            
+            if self.N_TR.shape == (1,):
+                self.global_N_TR = True
+            else:
+                self.global_N_TR = False
+                if self.N_TR.shape != (self.n_regions):
+                    raise ValueError("Shape of N_TR should be equal to number of regions!")
 
 
     def _set_num_parameters(self) -> int:
@@ -151,6 +156,17 @@ class FMConfig:
         self.pow_spec = compute_or_load_pow_spec_cube(
             self.N, self.L, self.Z_I, sinc=self.pk_with_sinc
         )
+
+        if self.rsd and self.rsd_type=='Radial':
+            axis = (jnp.arange(self.N) + 0.5) * self.L/self.N - self.L / 2.0
+            rx, ry, rz = jnp.meshgrid(axis, axis, axis, indexing="ij")
+            r = jnp.sqrt(rx * rx + ry * ry + rz * rz)
+
+            eps = 1e-10
+            rinv = jnp.where(r>eps, 1/r, 0.0)
+            self.r_vec_over_r = jnp.array([rx, ry, rz]) * rinv
+
+        
 
 
     def to_dict(self):

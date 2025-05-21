@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from .fourier import get_k, get_k_1D, my_fft, my_ifft
+from .fourier import get_k, get_k_1D, get_k_rfft_1D, my_fft, my_ifft
 
 
 def get_pdf(n_tr, bin_edges):
@@ -44,31 +44,69 @@ def get_pow_spec_1D(delta, L, n_bins, sphere_only=False):
     return get_radial_distro(k, pk, bin_range=(0.0, k_max), n_bins=n_bins)
 
 
-def get_pow_spec_quadrupole(delta, L, n_bins, sphere_only=False):
-
+def get_pow_spec_quadrupole(
+    delta, L, n_bins, sphere_only=False, direction="PlaneParallel"
+):
     N = delta.shape[0]
-
-    L3 = jnp.exp(3 * jnp.log(L))
-    INV_L3 = jnp.exp(-3 * jnp.log(L))
+    L3 = L**3
+    INV_L3 = L3**-1
 
     fact = 1 / jnp.sqrt(3) if sphere_only else 1.0
 
     delta_hat = my_fft(delta, L3)
-    pk = jnp.abs(delta_hat * jnp.conj(delta_hat)) * INV_L3
 
     k = get_k(N, L)
     k_max = k.max() * fact
 
-    kx = get_k_1D(N, L)[:, None, None]
+    if direction == "PlaneParallel":  # LOS = +x
+        kx = get_k_1D(N, L)[:, None, None]
+        mu = kx / (k + 1e-20)
+        Leg2 = 0.5 * (3.0 * mu**2 - 1.0)
+        pk_quad = 5.0 * jnp.abs(delta_hat) ** 2 * Leg2 * INV_L3
 
-    mu = kx / (k + 1e-20)  # cosine with LOS
-    Leg2 = 0.5 * (3.0 * mu**2 - 1.0)  # Legendre ℓ=2
-    pk_quad = pk * Leg2 * 5.0  # 5 = (2ℓ+1) prefactor
+    else:  # 'Radial'
+        axis = (jnp.arange(N) + 0.5) * L / N - L / 2.0
+        rx, ry, rz = jnp.meshgrid(axis, axis, axis, indexing="ij")
+        r = jnp.sqrt(rx * rx + ry * ry + rz * rz)
+        rinv = jnp.where(r > 0.0, 1.0 / r, 0.0)
+        rhat = jnp.array([rx, ry, rz]) * rinv  # shape (3,N,N,N)
 
-    _, pk_1D = get_radial_distro(k, pk, bin_range=(0.0, k_max), n_bins=n_bins)
-    k_c, pk_quad_1D = get_radial_distro(k, pk_quad, bin_range=(0.0, k_max), n_bins=n_bins)
+        # weighted fields  r̂_i r̂_j δ(x)
+        w_xx = my_fft(rhat[0] * rhat[0] * delta, L3)
+        w_yy = my_fft(rhat[1] * rhat[1] * delta, L3)
+        w_zz = my_fft(rhat[2] * rhat[2] * delta, L3)
+        w_xy = my_fft(rhat[0] * rhat[1] * delta, L3)
+        w_xz = my_fft(rhat[0] * rhat[2] * delta, L3)
+        w_yz = my_fft(rhat[1] * rhat[2] * delta, L3)
 
-    return k_c, pk_quad_1D / (pk_1D+1e-10)
+        # k-unit vectors
+        k1d = get_k_1D(N, L)
+        k1d_rfft = get_k_rfft_1D(N, L)
+        kx, ky, kz = jnp.meshgrid(k1d, k1d, k1d_rfft, indexing="ij")
+        kmag = jnp.sqrt(kx * kx + ky * ky + kz * kz) + 1e-20
+        khat = [kx / kmag, ky / kmag, kz / kmag]
+
+        # contraction  k̂_i k̂_j w_ij
+        S = (
+            khat[0] * khat[0] * w_xx
+            + khat[1] * khat[1] * w_yy
+            + khat[2] * khat[2] * w_zz
+            + 2.0
+            * (
+                khat[0] * khat[1] * w_xy
+                + khat[0] * khat[2] * w_xz
+                + khat[1] * khat[2] * w_yz
+            )
+        )
+
+        delta2_hat = 1.5 * S - 0.5 * delta_hat
+        pk_quad = 5.0 * jnp.real(delta_hat * jnp.conj(delta2_hat)) * INV_L3
+
+    pk = jnp.abs(delta_hat) ** 2 * INV_L3
+    _, pk_1D = get_radial_distro(k, pk, (0.0, k_max), n_bins)
+    k_c, pk_quad_1D = get_radial_distro(k, pk_quad, (0.0, k_max), n_bins)
+
+    return k_c, pk_quad_1D / (pk_1D + 1e-10)
 
 
 def get_cross_power_spec_1D(delta_1, delta_2, L, n_bins, sphere_only=False):

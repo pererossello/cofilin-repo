@@ -58,7 +58,7 @@ def make_bias_param_distro_dic(det_bias_model, stoch_bias_model, n_regions):
         out_dict = {"b": b_distro}
 
     elif det_bias_model == "PowerLaw":
-        alpha_distro = dist.LogNormal(0.0, 1.0).expand([n_regions]).to_event(1)
+        alpha_distro = dist.LogNormal(0.273, 0.3).expand([n_regions]).to_event(1)
         out_dict = {"alpha": alpha_distro}
 
     elif det_bias_model == "LinearPowerLaw":
@@ -74,7 +74,7 @@ def make_bias_param_distro_dic(det_bias_model, stoch_bias_model, n_regions):
 
     if stoch_bias_model == "NegBinomial":
         beta_distro = (
-            dist.LogNormal(jnp.log(10.0), 0.35).expand([n_regions]).to_event(1)
+            dist.LogNormal(2.119, 0.2).expand([n_regions]).to_event(1)
         )
         out_dict["beta"] = beta_distro
 

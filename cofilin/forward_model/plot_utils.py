@@ -296,3 +296,106 @@ def compare_pow_spec(
 
     return fig, axs
 
+####################################################
+
+
+
+def stats_plot_for_article(bk_rat_y_lim = (0.5, 1.5)):
+
+    fig_size = 7
+    ratio = 2.25
+    hspace = 0.075
+    wspace = 0.21
+
+    pk_rat_y_lim = (0.9, 1.1)
+    cross_y_lim = (-0.05, 1.05)
+
+    fs, r = fig_size, ratio
+    labelsize_factor = 2.75#1.75
+
+    sep_fact = 0.5
+
+    nrows = 2
+    ncols = 2
+    row_ratios = [1.5, 1]
+    fig, axs = plt.subplots(
+        nrows, ncols, figsize=(r * fs, fs), gridspec_kw={"height_ratios": row_ratios}
+    )
+    plt.subplots_adjust(wspace=wspace, hspace=hspace)
+
+    labelsize = labelsize_factor * fs
+
+    axs[0, 0].tick_params(labelbottom=False)
+    axs[0, 1].tick_params(labelbottom=False)
+
+    ax00_pos = axs[0, 0].get_position()
+    ax01_pos = axs[0, 1].get_position()
+    ax11_pos = axs[1, 1].get_position()
+
+    separation = ax01_pos.x0 - ax00_pos.x1
+    separation = separation * sep_fact
+    total_height = ax00_pos.y1 - ax11_pos.y0
+
+    ax_c = fig.add_axes(
+        [ax01_pos.x1 + separation, ax11_pos.y0, ax01_pos.width, total_height]
+    )
+
+
+    axs_all = list(axs.ravel()) + [ax_c]
+    for ax in axs_all:
+        ax.tick_params(labelsize=labelsize)
+        ax.grid(
+            which="major",
+            linewidth=0.5,
+            color="k",
+            alpha=0.25,
+        )
+
+    sw = 0.25*fs
+    tick_length = sw*5
+    for ax in axs_all:  # use .flat to iterate even if it's 2D
+        for spine in ax.spines.values():
+            spine.set_linewidth(sw)
+        ax.tick_params(which='major', direction='inout', width=sw,  length=tick_length)
+        ax.tick_params(which='minor', direction='inout', width=sw, length=tick_length*0.6)
+
+
+
+    axs_log_x = [axs[0, 0], axs[1, 0], ax_c]
+    for ax in axs_log_x:
+        ax.set_xscale("log")
+        ax.set_xlabel(r'$k \, [h \, \text{Mpc}^{-1}]$ ', fontsize=labelsize*1.2)
+    
+    
+
+    axs[0, 0].set_yscale("log")
+
+    axs[1, 0].set_ylim(pk_rat_y_lim[0], pk_rat_y_lim[1])
+    axs[1, 1].set_ylim(bk_rat_y_lim[0], bk_rat_y_lim[1])
+
+    ax_c.set_ylim(cross_y_lim[0], cross_y_lim[1])
+
+    axs[1,1].set_xlabel(r'$\theta$ ', fontsize=labelsize*1.2)
+    axs[1,1].set_xticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi])
+    axs[1,1].set_xticklabels([r'$0$', r'$\pi/4$', r'$\pi/2$', r'$3\pi/4$', r'$\pi$'])
+
+
+    yl_00 = r"$P_{\text{rec}} (k)$"
+    yl_10 = r"$P_{\text{rec}}/P_{\text{ref}}$"
+    axs[0,0].set_ylabel(yl_00, fontsize=labelsize*1.25)
+    axs[1,0].set_ylabel(yl_10, fontsize=labelsize*1.25)
+
+    yl_01 = r"$Q_{\text{rec}} (\theta)$"
+    yl_11 = r"$Q_{\text{rec}}/Q_{\text{ref}}$"
+    lp = -1
+    axs[0,1].set_ylabel(yl_01, fontsize=labelsize*1.25, labelpad=lp)
+    axs[1,1].set_ylabel(yl_11, fontsize=labelsize*1.25, labelpad=lp)
+
+
+    ax_c.yaxis.set_label_position("right")  # Move the label to the right
+    ax_c.yaxis.tick_right()
+    yl_c = r"$C(k)$"
+    lp = -1
+    ax_c.set_ylabel(yl_c, fontsize=labelsize*1.25, labelpad=lp)
+
+    return fig, axs_all

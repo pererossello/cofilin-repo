@@ -4,10 +4,8 @@ import json
 import pickle
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
-
-repo_dir = "/home/pererossello/Documents/tfm/code_v3/cofilin-repo/"
+repo_dir = "/home/pere/code/cofilin-repo"
 
 sys.path.insert(0, repo_dir)
 
@@ -95,7 +93,7 @@ for k, v in init_bias_params_constrained.items():
 
 model = fmodel.build_model()
 
-max_tree_depth = 10
+max_tree_depth = 8
 adapt_mass_matrix = True
 dense_mass = False  
 adapt_step_size = True

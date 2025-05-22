@@ -3,7 +3,7 @@ import sys
 import json
 import pickle
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 
@@ -95,13 +95,13 @@ for k, v in init_bias_params_constrained.items():
 
 model = fmodel.build_model()
 
-max_tree_depth = 8
+max_tree_depth = 10
 adapt_mass_matrix = True
 dense_mass = False  
 adapt_step_size = True
 init_step_size = 1e-3
 
-num_warmup = 100
+num_warmup = 25
 num_samples = 1
 thinning = 1
 

@@ -1,7 +1,7 @@
 import os
 import sys
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 
@@ -26,7 +26,7 @@ from cofilin.recs.mock_maker import make_mock
 SEED_INT_Q = 1
 SEED_INT_N_TR = 1
 
-N, Z_I, Z_F = 64, 99, 0
+N, Z_I, Z_F = 128, 99, 0
 R = 3.906 * 1  # * 4
 MND = 1e-2
 L = R * N
@@ -34,7 +34,7 @@ N_TR = MND * L**3
 print(f"L: {L:0.2f} Mpc/h")
 print(f"N_TR: {N_TR:0.2e}")
 
-input_kind = 'CWN'
+input_kind = 'WN'
 lpt_method = "ALPT"
 rsd = True
 rsd_type = "Radial"

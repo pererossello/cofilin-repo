@@ -1,7 +1,7 @@
 z_snippets.md
 z_bin
 zz_bin
-z*
+z_final_recs
 cache 
 __pycache__
 
@@ -9,6 +9,9 @@ sample.hdf5
 mock.hdf5
 sample_cfg.json
 *.txt 
+
+figures
+results
 
 fig_wf.png
 fig.png
